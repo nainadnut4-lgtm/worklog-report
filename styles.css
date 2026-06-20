@@ -314,12 +314,162 @@ body {
   transition: background 0.2s;
 }
 
+/* C: badge subtle — still visible but not the focus */
 .cal-badge {
-  font-size: 0.65rem;
-  color: var(--text-dim);
+  font-size: 0.6rem;
+  color: rgba(148,163,184,0.45);
   text-align: right;
   line-height: 1;
   margin-top: auto;
+}
+
+/* ── MONTH SUMMARY ────────────────────────────────────────────────────────── */
+#month-summary {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ms-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem 1.1rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+.ms-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+/* Stacked bar */
+.msb-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 99px;
+  overflow: hidden;
+  gap: 2px;
+  margin-bottom: 0.75rem;
+}
+
+.msb-seg {
+  border-radius: 99px;
+  min-width: 4px;
+  transition: opacity 0.2s;
+}
+
+.msb-seg:hover { opacity: 0.8; }
+
+.msb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.msb-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.msb-leg-item strong { color: var(--text); }
+
+.msb-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.msb-pct {
+  font-size: 0.73rem;
+  color: rgba(148,163,184,0.6);
+}
+
+/* Highlights */
+.msh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.msh-card {
+  display: grid;
+  grid-template-columns: 3rem 10px auto 1fr auto;
+  align-items: center;
+  gap: 0 0.6rem;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.83rem;
+}
+
+.msh-hours {
+  font-weight: 800;
+  font-size: 0.9rem;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.msh-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.msh-cat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.msh-detail {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.msh-date {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.msh-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+@media (max-width: 480px) {
+  .msh-card {
+    grid-template-columns: 2.8rem 9px auto 1fr;
+    grid-template-rows: auto auto;
+  }
+  .msh-date {
+    grid-column: 1 / -1;
+    color: rgba(148,163,184,0.6);
+    font-size: 0.68rem;
+    padding-top: 0.2rem;
+  }
 }
 
 /* ── MODAL ────────────────────────────────────────────────────────────────── */

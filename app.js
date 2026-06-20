@@ -79,6 +79,7 @@ function showCalendar() {
 
   renderHeader();
   renderLegend();
+  renderMonthSummary();
   renderGrid();
 }
 
@@ -161,10 +162,151 @@ function renderHeader() {
     document.getElementById('header-owner').hidden = false;
   }
 
+  // C: Removed % fill — now shows neutral "บันทึก X/Y วันทำการ"
   document.getElementById('header-summary').innerHTML = `
     <span class="summary-chip">รวม <strong>${summary.totalSlots} ชม.</strong></span>
     ${topCatBadge ? `<span class="summary-chip">หมวดเด่น ${topCatBadge}</span>` : ''}
-    <span class="summary-chip">ลงบันทึก <strong>${summary.pct}%</strong> (${summary.filledDays}/${workingDays.length} วัน)</span>
+    <span class="summary-chip">บันทึก <strong>${summary.filledDays}/${workingDays.length}</strong> วันทำการ</span>
+  `;
+}
+
+// ── Month Summary panel ────────────────────────────────────────────────────────
+
+/**
+ * Computes per-category hour totals for the stacked breakdown bar.
+ * Returns [{catId, label, color, hours, pct}, ...] sorted desc by hours, 0-hour cats omitted.
+ */
+function computeTimeBreakdown(days, categories) {
+  const totals = {};
+  let totalSlots = 0;
+  for (const slots of Object.values(days)) {
+    for (const s of slots) {
+      totals[s.categoryId] = (totals[s.categoryId] ?? 0) + 1;
+      totalSlots++;
+    }
+  }
+  if (totalSlots === 0) return [];
+
+  return categories
+    .filter((cat) => (totals[cat.id] ?? 0) > 0)
+    .map((cat) => ({
+      catId:  cat.id,
+      label:  cat.label,
+      color:  cat.color,
+      hours:  totals[cat.id],
+      pct:    Math.round((totals[cat.id] / totalSlots) * 100),
+    }))
+    .sort((a, b) => b.hours - a.hours);
+}
+
+/**
+ * Finds contiguous same-category runs within each day, then returns top ~5 blocks.
+ * A "block" = consecutive slots with the same categoryId.
+ * Returns [{hours, catId, label, color, detail, dateLabel}, ...].
+ */
+function computeHighlights(days, catMap) {
+  const thaiMonthShort = ['', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+  const blocks = [];
+
+  for (const [dateKey, slots] of Object.entries(days)) {
+    if (!slots || slots.length === 0) continue;
+
+    // Sort by slot number first
+    const sorted = [...slots].sort((a, b) => a.slot - b.slot);
+
+    // Build contiguous runs
+    let runStart = 0;
+    for (let i = 1; i <= sorted.length; i++) {
+      const isNewRun = i === sorted.length
+        || sorted[i].categoryId !== sorted[runStart].categoryId
+        || sorted[i].slot !== sorted[i - 1].slot + 1;
+
+      if (isNewRun) {
+        const run = sorted.slice(runStart, i);
+        const catId = run[0].categoryId;
+        const cat = catMap[catId];
+        if (!cat) { runStart = i; continue; }
+
+        const details = [...new Set(run.map((s) => s.detail).filter(Boolean))];
+        let detail = details.join(' · ');
+        if (detail.length > 60) detail = detail.slice(0, 58) + '…';
+
+        const [y, mo, d] = dateKey.split('-').map(Number);
+        const dateLabel = `${d} ${thaiMonthShort[mo]}`;
+
+        blocks.push({
+          hours:     run.length,
+          catId,
+          label:     cat.label,
+          color:     cat.color,
+          detail:    detail || cat.label,
+          dateLabel,
+        });
+        runStart = i;
+      }
+    }
+  }
+
+  // Sort by hours desc; take top 5 with hours >= 2, then relax to fill 3-5
+  blocks.sort((a, b) => b.hours - a.hours);
+
+  let result = blocks.filter((b) => b.hours >= 2).slice(0, 5);
+  if (result.length < 3) {
+    const extras = blocks.filter((b) => b.hours < 2 && !result.includes(b));
+    result = result.concat(extras).slice(0, 5);
+  }
+
+  return result;
+}
+
+function renderMonthSummary() {
+  const { days, categories } = worklogData;
+
+  const breakdown = computeTimeBreakdown(days, categories);
+  const highlights = computeHighlights(days, categoryMap);
+
+  // Build stacked bar segments
+  const barSegments = breakdown
+    .map((b) => `<div class="msb-seg" style="flex:${b.hours};background:${b.color}" title="${esc(b.label)} ${b.hours}ชม."></div>`)
+    .join('');
+
+  // Build legend list
+  const legendItems = breakdown
+    .map(
+      (b) =>
+        `<span class="msb-leg-item"><span class="msb-dot" style="background:${b.color}"></span>${esc(b.label)} — <strong>${b.hours} ชม.</strong> <span class="msb-pct">(${b.pct}%)</span></span>`
+    )
+    .join('');
+
+  // Build highlight cards
+  const highlightCards = highlights.length === 0
+    ? '<div class="msh-empty">ยังไม่มีข้อมูลงานก้อนใหญ่</div>'
+    : highlights
+        .map(
+          (h) =>
+            `<div class="msh-card">
+              <span class="msh-hours">${h.hours}ชม.</span>
+              <span class="msh-dot" style="background:${h.color}"></span>
+              <span class="msh-cat" style="color:${h.color}">${esc(h.label)}</span>
+              <span class="msh-detail">${esc(h.detail)}</span>
+              <span class="msh-date">${esc(h.dateLabel)}</span>
+            </div>`
+        )
+        .join('');
+
+  const el = document.getElementById('month-summary');
+  el.innerHTML = `
+    <div class="ms-section">
+      <div class="ms-heading">เวลาไปลงกับอะไร</div>
+      <div class="msb-bar">${barSegments}</div>
+      <div class="msb-legend">${legendItems}</div>
+    </div>
+    <div class="ms-section">
+      <div class="ms-heading">สิ่งที่ทำเด่นๆ เดือนนี้</div>
+      <div class="msh-list">${highlightCards}</div>
+    </div>
   `;
 }
 
