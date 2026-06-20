@@ -151,7 +151,16 @@ body {
   background: linear-gradient(135deg, #4c1d95 0%, #1e3a8a 100%);
   padding: 1.5rem 1.25rem 1.25rem;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .app-header::after {
@@ -611,6 +620,154 @@ body {
   font-size: 0.85rem;
   color: rgba(148,163,184,0.5);
   font-style: italic;
+}
+
+/* ── PERSON SWITCHER ──────────────────────────────────────────────────────── */
+#person-switcher {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.ps-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem 0.3rem 0.3rem;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.18s, box-shadow 0.18s;
+  max-width: 160px;
+}
+
+.ps-trigger:hover:not(:disabled) {
+  background: rgba(255,255,255,0.18);
+  box-shadow: 0 0 0 2px rgba(167,139,250,0.4);
+}
+
+.ps-trigger:disabled {
+  cursor: default;
+}
+
+.ps-trigger--single {
+  pointer-events: none;
+  cursor: default;
+  padding-right: 0.5rem;
+}
+
+.ps-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.3);
+  display: block;
+}
+
+.ps-avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.ps-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e0e7ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+
+.ps-arrow {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.6);
+  flex-shrink: 0;
+  transition: transform 0.18s;
+}
+
+.ps-trigger[aria-expanded="true"] .ps-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown */
+.ps-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: #1a1a3a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), var(--glow-v);
+  min-width: 200px;
+  overflow: hidden;
+  animation: ps-drop-in 0.18s cubic-bezier(0.16,1,0.3,1);
+}
+
+@keyframes ps-drop-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ps-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s;
+  outline: none;
+}
+
+.ps-dd-item:hover,
+.ps-dd-item:focus {
+  background: rgba(167,139,250,0.12);
+}
+
+.ps-dd-item--active {
+  background: rgba(167,139,250,0.08);
+}
+
+.ps-dd-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.2);
+  display: block;
+}
+
+.ps-dd-avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-end));
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ps-dd-name {
+  font-size: 0.88rem;
+  color: var(--text);
+  flex: 1;
+}
+
+.ps-dd-check {
+  color: var(--accent);
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 /* ── RESPONSIVE ───────────────────────────────────────────────────────────── */

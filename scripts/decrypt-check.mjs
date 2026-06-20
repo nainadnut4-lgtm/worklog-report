@@ -51,7 +51,19 @@ try {
 
 const data = JSON.parse(plaintext);
 console.log('Round-trip OK');
-console.log(`  owner: ${data.owner ?? '(none)'}`);
-console.log(`  month: ${data.month}`);
-console.log(`  days:  ${Object.keys(data.days).length}`);
+console.log(`  schema: ${data.schema}`);
 console.log(`  categories: ${data.categories.map((c) => c.label).join(', ')}`);
+
+if (Array.isArray(data.team)) {
+  console.log(`  team (${data.team.length} คน):`);
+  for (const p of data.team) {
+    const dayCount = Object.keys(p.days).length;
+    const hasAvatar = Boolean(p.avatar);
+    console.log(`    [${p.id}] ${p.name} — ${p.month} — ${dayCount} วัน — avatar: ${hasAvatar}`);
+  }
+} else {
+  // schema-1 fallback
+  console.log(`  owner: ${data.owner ?? '(none)'}`);
+  console.log(`  month: ${data.month}`);
+  console.log(`  days:  ${Object.keys(data.days).length}`);
+}

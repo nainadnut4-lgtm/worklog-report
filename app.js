@@ -5,8 +5,10 @@
 'use strict';
 
 // ── State ──────────────────────────────────────────────────────────────────────
-let worklogData = null;      // decrypted JSON
-let categoryMap  = {};       // id → {label, color}
+let worklogData  = null;      // decrypted JSON (normalized to schema-2 shape)
+let categoryMap  = {};        // id → {label, color}
+let currentPerson = 0;        // index into worklogData.team
+
 // Canonical from app lib/config.dart: startHour=8, endHour=17 → slot_start 8..16
 // = 9 hourly blocks covering 08:00–17:00. MUST match or slot-8 entries vanish.
 const DAY_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16]; // 9 slots, 08:00–17:00
@@ -19,13 +21,51 @@ function esc(s) {
   }[c]));
 }
 
+// ── Team helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Normalise any schema (1 = single-person, 2 = team array) into schema-2 shape.
+ * Returns a copy with `.team` guaranteed to be an array.
+ */
+function normalizeTeam(data) {
+  if (Array.isArray(data.team)) return data;
+  // schema-1 backward compat
+  return {
+    ...data,
+    team: [{
+      id:     'self',
+      name:   data.owner ?? '',
+      avatar: data.avatar ?? null,
+      month:  data.month,
+      days:   data.days,
+    }],
+  };
+}
+
+/** Returns initials: first char of first word + first char of last word (Thai). */
+function makeInitials(name) {
+  const words = String(name ?? '').trim().split(/\s+/);
+  if (words.length === 0 || words[0] === '') return '?';
+  const first = [...words[0]][0] ?? '';           // grapheme-safe for Thai
+  const last  = words.length > 1 ? ([...words[words.length - 1]][0] ?? '') : '';
+  return first + last;
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('unlock-form').addEventListener('submit', handleUnlock);
   document.getElementById('modal-overlay').addEventListener('click', closeModal);
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeSwitcher();
+      closeModal();
+    }
+  });
+  // Close switcher dropdown on outside click
+  document.addEventListener('click', (e) => {
+    const switcher = document.getElementById('person-switcher');
+    if (switcher && !switcher.contains(e.target)) closeSwitcher();
   });
 });
 
@@ -49,7 +89,9 @@ async function handleUnlock(e) {
     if (!resp.ok) throw new Error('FETCH_FAILED');
     const envelope = await resp.json();
 
-    worklogData = await decryptWorklog(envelope, passphrase);
+    const raw = await decryptWorklog(envelope, passphrase);
+    worklogData = normalizeTeam(raw);
+    currentPerson = 0;
 
     // Build category lookup
     categoryMap = {};
@@ -69,6 +111,127 @@ async function handleUnlock(e) {
     }
     btnEl.disabled = false;
     spinEl.hidden = true;
+  }
+}
+
+// ── Person switcher ────────────────────────────────────────────────────────────
+
+function setPerson(index) {
+  if (index === currentPerson) { closeSwitcher(); return; }
+  currentPerson = index;
+  closeSwitcher();
+  renderHeader();
+  renderMonthSummary();
+  renderGrid();
+}
+
+function openSwitcher() {
+  const dropdown = document.getElementById('switcher-dropdown');
+  if (!dropdown) return;
+  dropdown.hidden = false;
+  // Move focus to first item
+  const first = dropdown.querySelector('[role="option"]');
+  if (first) first.focus();
+}
+
+function closeSwitcher() {
+  const dropdown = document.getElementById('switcher-dropdown');
+  if (dropdown) dropdown.hidden = true;
+}
+
+function toggleSwitcher() {
+  const dropdown = document.getElementById('switcher-dropdown');
+  if (!dropdown) return;
+  if (dropdown.hidden) {
+    openSwitcher();
+  } else {
+    closeSwitcher();
+  }
+}
+
+/** Renders the avatar+name block in the header top-right corner. */
+function renderPersonSwitcher() {
+  const container = document.getElementById('person-switcher');
+  if (!container) return;
+
+  const team = worklogData.team;
+  const person = team[currentPerson];
+
+  const avatarHtml = person.avatar
+    ? `<img class="ps-avatar" src="${esc(person.avatar)}" alt="${esc(person.name)}" width="40" height="40" />`
+    : `<div class="ps-avatar ps-avatar--initials" aria-hidden="true">${esc(makeInitials(person.name))}</div>`;
+
+  const isMulti = team.length > 1;
+  const arrowHtml = isMulti
+    ? `<span class="ps-arrow" aria-hidden="true">&#8964;</span>`
+    : '';
+
+  const triggerHtml = `
+    <button class="ps-trigger${isMulti ? '' : ' ps-trigger--single'}"
+            id="ps-trigger-btn"
+            ${isMulti ? 'aria-haspopup="listbox" aria-expanded="false"' : ''}
+            ${!isMulti ? 'disabled' : ''}
+            type="button">
+      ${avatarHtml}
+      <span class="ps-name">${esc(person.name)}</span>
+      ${arrowHtml}
+    </button>
+  `;
+
+  let dropdownHtml = '';
+  if (isMulti) {
+    const items = team.map((p, i) => {
+      const isSelected = i === currentPerson;
+      const avHtml = p.avatar
+        ? `<img class="ps-dd-avatar" src="${esc(p.avatar)}" alt="" width="32" height="32" />`
+        : `<div class="ps-dd-avatar ps-dd-avatar--initials" aria-hidden="true">${esc(makeInitials(p.name))}</div>`;
+      return `
+        <div class="ps-dd-item${isSelected ? ' ps-dd-item--active' : ''}"
+             role="option"
+             aria-selected="${isSelected}"
+             tabindex="0"
+             data-index="${i}">
+          ${avHtml}
+          <span class="ps-dd-name">${esc(p.name)}</span>
+          ${isSelected ? '<span class="ps-dd-check" aria-hidden="true">&#10003;</span>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    dropdownHtml = `
+      <div id="switcher-dropdown" class="ps-dropdown" role="listbox" aria-label="เลือกสมาชิกทีม" hidden>
+        ${items}
+      </div>
+    `;
+  }
+
+  container.innerHTML = triggerHtml + dropdownHtml;
+
+  // Wire events
+  const triggerBtn = container.querySelector('#ps-trigger-btn');
+  if (isMulti && triggerBtn) {
+    triggerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSwitcher();
+      const expanded = !document.getElementById('switcher-dropdown').hidden;
+      triggerBtn.setAttribute('aria-expanded', String(expanded));
+    });
+  }
+
+  if (isMulti) {
+    container.querySelectorAll('.ps-dd-item').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setPerson(Number(el.dataset.index));
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setPerson(Number(el.dataset.index));
+        }
+        if (e.key === 'Escape') closeSwitcher();
+      });
+    });
   }
 }
 
@@ -146,7 +309,8 @@ function calcSummary(days, allWorkingDays) {
 }
 
 function renderHeader() {
-  const { month, owner, days } = worklogData;
+  const person = worklogData.team[currentPerson];
+  const { month, days } = person;
   const { year, month: m } = parseMonth(month);
   const workingDays = getWorkingDaysInMonth(year, m);
   const summary = calcSummary(days, workingDays.length);
@@ -157,10 +321,10 @@ function renderHeader() {
     : '';
 
   document.getElementById('header-month').textContent = formatThaiMonth(month);
-  if (owner) {
-    document.getElementById('header-owner').textContent = owner;
-    document.getElementById('header-owner').hidden = false;
-  }
+
+  // header-owner is now handled by renderPersonSwitcher; hide old element
+  const ownerEl = document.getElementById('header-owner');
+  if (ownerEl) ownerEl.hidden = true;
 
   // C: Removed % fill — now shows neutral "บันทึก X/Y วันทำการ"
   document.getElementById('header-summary').innerHTML = `
@@ -168,6 +332,8 @@ function renderHeader() {
     ${topCatBadge ? `<span class="summary-chip">หมวดเด่น ${topCatBadge}</span>` : ''}
     <span class="summary-chip">บันทึก <strong>${summary.filledDays}/${workingDays.length}</strong> วันทำการ</span>
   `;
+
+  renderPersonSwitcher();
 }
 
 // ── Month Summary panel ────────────────────────────────────────────────────────
@@ -210,7 +376,7 @@ function computeHighlights(days, catMap) {
 
   const blocks = [];
 
-  for (const [dateKey, slots] of Object.entries(days)) {
+  for (const [dk, slots] of Object.entries(days)) {
     if (!slots || slots.length === 0) continue;
 
     // Sort by slot number first
@@ -233,7 +399,7 @@ function computeHighlights(days, catMap) {
         let detail = details.join(' · ');
         if (detail.length > 60) detail = detail.slice(0, 58) + '…';
 
-        const [y, mo, d] = dateKey.split('-').map(Number);
+        const [y, mo, d] = dk.split('-').map(Number);
         const dateLabel = `${d} ${thaiMonthShort[mo]}`;
 
         blocks.push({
@@ -262,7 +428,9 @@ function computeHighlights(days, catMap) {
 }
 
 function renderMonthSummary() {
-  const { days, categories } = worklogData;
+  const person = worklogData.team[currentPerson];
+  const { days } = person;
+  const { categories } = worklogData;
 
   const breakdown = computeTimeBreakdown(days, categories);
   const highlights = computeHighlights(days, categoryMap);
@@ -321,7 +489,8 @@ function renderLegend() {
 }
 
 function renderGrid() {
-  const { month, days } = worklogData;
+  const person = worklogData.team[currentPerson];
+  const { month, days } = person;
   const { year, month: m } = parseMonth(month);
   const workingDays = getWorkingDaysInMonth(year, m);
   const todayKey = dateKey(new Date());

@@ -24,3 +24,6 @@ package-lock.json
 # Editor
 .vscode/
 .idea/
+
+# local preview (never commit)
+_preview*.html
