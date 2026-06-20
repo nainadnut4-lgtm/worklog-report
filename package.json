@@ -1,0 +1,12 @@
+{
+  "name": "worklog-boss-web",
+  "version": "1.0.0",
+  "description": "Encrypted worklog viewer for boss — static site, client-side decrypt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "encrypt": "node scripts/encrypt.mjs",
+    "check": "node scripts/decrypt-check.mjs",
+    "publish": "bash scripts/publish.sh"
+  }
+}

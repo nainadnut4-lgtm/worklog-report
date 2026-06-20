@@ -1,0 +1,26 @@
+# Plaintext worklog data — NEVER commit
+*.plain.json
+sample/
+worklog-*.json
+worklog.json
+*.db
+*.sqlite
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.webp
+
+# Encrypted data file is intentionally committed:
+# !data/worklog.enc
+
+# Node
+node_modules/
+package-lock.json
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worklog — Boss View</title>
+  <meta name="description" content="ปฏิทิน worklog พนักงาน (เข้ารหัส)" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- No external scripts, fonts loaded from system stack -->
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     LOCK SCREEN — shown before decrypt; zero worklog data in DOM
+  ════════════════════════════════════════════════════════════════════════════ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <span class="lock-icon" aria-hidden="true">🔐</span>
+    <div class="lock-title">Worklog Boss View</div>
+    <div class="lock-sub">ใส่รหัสผ่านที่ได้รับจากพนักงาน</div>
+
+    <form id="unlock-form" autocomplete="off">
+      <div class="input-group">
+        <input
+          id="passphrase"
+          type="password"
+          placeholder="รหัสผ่าน"
+          autocomplete="current-password"
+          required
+          autofocus
+        />
+      </div>
+      <button id="unlock-btn" class="btn-unlock" type="submit">
+        <span id="unlock-spinner" class="spinner" hidden></span>
+        <span>เปิดดู</span>
+      </button>
+      <div id="unlock-error" class="unlock-error" role="alert" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     APP SCREEN — rendered after successful decrypt
+  ════════════════════════════════════════════════════════════════════════════ -->
+<div id="app-screen" hidden>
+
+  <header class="app-header">
+    <div class="header-month" id="header-month"></div>
+    <div class="header-owner" id="header-owner" hidden></div>
+    <div class="header-summary" id="header-summary"></div>
+  </header>
+
+  <div class="legend-bar" id="legend" role="list" aria-label="หมวดหมู่"></div>
+
+  <main class="calendar-wrap">
+    <div id="calendar-grid" role="grid" aria-label="ปฏิทิน worklog"></div>
+  </main>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DAY DETAIL MODAL
+  ════════════════════════════════════════════════════════════════════════════ -->
+<div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-sheet">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" id="modal-close" aria-label="ปิด">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Scripts: only local files, no CDN, no external requests -->
+<script src="crypto.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
